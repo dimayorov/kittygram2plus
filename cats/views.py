@@ -1,15 +1,38 @@
-from rest_framework import viewsets, permissions
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters, viewsets, permissions
+from rest_framework.throttling import AnonRateThrottle, ScopedRateThrottle
+from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
 
 from .models import Achievement, Cat, User
 
+from .pagination import CatsPagination
 from .permissions import OwnerOrReadOnly, ReadOnly
 from .serializers import AchievementSerializer, CatSerializer, UserSerializer
+from .throttling import WorkingHoursRateThrottle
 
 
 class CatViewSet(viewsets.ModelViewSet):
     queryset = Cat.objects.all()
     serializer_class = CatSerializer
     permission_classes = (OwnerOrReadOnly,)
+    
+    filter_backends = (
+        DjangoFilterBackend, 
+        filters.SearchFilter, 
+        filters.OrderingFilter,
+    )
+    
+    search_fields = ('^name',)
+    pagination_class = None
+    filterset_fields = ('color', 'birth_year')
+    ordering_fields = ('name', 'birth_year')
+    ordering = ('birth_year',)  
+    throttle_classes = (WorkingHoursRateThrottle, ScopedRateThrottle)
+    throttle_scope = 'low_request'
+    # search_fields = ('achievements__name', 'owner__username')
+    # pagination_class = PageNumberPagination
+    # pagination_class = CatsPagination
+    # pagination_class = LimitOffsetPagination 
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
